@@ -1,0 +1,13 @@
+- hosts: docker
+  tasks:
+     - name: installing the httpd service
+       package:
+               name: httpd
+               state: present
+     - name: creating the html file
+       copy:
+               src: "/root/ansible/task12.2/new.html"
+               dest: "/var/www/html/"
+     - name: starting httpd service
+       command: /usr/sbin/httpd
+

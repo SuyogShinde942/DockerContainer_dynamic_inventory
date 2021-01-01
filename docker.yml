@@ -1,0 +1,71 @@
+- hosts: localhost
+  ignore_errors: no
+  vars_prompt:
+
+  - name: cont_name
+    prompt: "enter container name"
+    private: no
+
+  tasks:
+  - name: Adding Docker yum repository
+    yum_repository:
+          name: "Docker"
+          description: "Docker repository for RHEL8"
+          baseurl: "https://download.docker.com/linux/centos/7/x86_64/stable/"
+          gpgcheck: no
+          enabled: yes
+
+  - name: Installing the docker-ce module
+    command:
+      cmd: "yum install docker-ce --nobest -y"
+      warn: false
+  - name: Starting the Docker services
+    service:
+      name: "docker"
+      state: started
+  - name: Installing the required pip modules
+    pip:
+      name: docker-py
+      
+
+  - name: stopping selinux
+    selinux:
+            policy: targeted
+            state: permissive
+
+  - name: pulling docker image
+    docker_image:
+          name: "shashwatpp/sshcentos:14.2"
+          source: pull
+  - name: Launching a container
+    docker_container:
+            name: "{{ cont_name }}"
+            image: "shashwatpp/sshcentos:14.2"
+            interactive: no
+            detach: yes
+            tty: no
+  - name: "retrieving IP of {{ cont_name }} container"
+    docker_container_info:
+            name: "{{ cont_name }}"
+    register: dinfo
+
+  - debug:
+            var: dinfo.container.NetworkSettings.IPAddress
+
+
+  - name: updating ansible inventory  with new docker info.......
+    blockinfile:
+            dest: "/root/inv.txt"
+            block: |
+                    [docker]
+                    {{ dinfo['container']['NetworkSettings']['IPAddress'] }} ansible_user=root ansible_ssh_pass=root ansible_connection=ssh
+            marker: ""
+
+
+  handlers:
+    - name: docker
+      yum:
+            name: docker-ce
+            state: present
+            allow_downgrade: yes
+            skip_broken: yes
